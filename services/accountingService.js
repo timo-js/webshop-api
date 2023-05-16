@@ -1,5 +1,6 @@
 /*
   parses .csv file into JS_Array and exports it
+  NOT USED IN DEMO
 */
 
 const fs = require("fs");

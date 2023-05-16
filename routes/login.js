@@ -1,104 +1,47 @@
-/*
-  Authentication and Authorization utilizing Microsoft Active Directory (NO AZURE)
-*/
-
 const express = require("express");
 const router = express.Router();
-
-const ActiveDirectory = require("activedirectory2");
-const config = require("config");
 
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
-router.post("/", async (req, res) => {
-  const configAD = {
-    url: "AD_IP_ADRESS",
-    baseDN: "DOMAIN_NAME",
+const users = [
+  {
     username: "admin",
-    password: process.argv.slice(2)[0],
-  };
+    groupName: "Admin",
+    mail: "admin@webshop",
+    displayName: "Admin",
+  },
+  {
+    username: "user",
+    groupName: "Webshop-Users",
+    mail: "user@webshop",
+    displayName: "User",
+  },
+];
 
-  const ad = new ActiveDirectory(configAD);
-  const usernameWithDomain = "DOMAIN\\" + req.body.username;
-  const username = req.body.username;
-  const password = req.body.password;
-  const groupsToCheck = config.get("groups");
-  let mail = "";
-  let displayName = "";
+// DO NEVER USE THIS APPROACH IN PRODUCTION
+// In production use: "./adLogin.js" as it utilizes Microsofts Active Directory
+// to authenticate users.
+// I did code this snippet just for the demo version of this app
+router.post("/", async (req, res) => {
+  let index;
 
-  ad.authenticate(usernameWithDomain, password, async function (err, auth) {
-    if (err) {
-      return res.status(400).send("Username or password not correct.");
-    }
+  if (req.body.username === "admin" && req.body.password === "admin") {
+    index = 0;
+  } else if (req.body.username === "user" && req.body.password === "user") {
+    index = 1;
+  } else {
+    res.status(400).send("Username or password wrong");
+  }
 
-    if (auth) {
-      ad.findUser(username, function (err, user) {
-        if (err) {
-          console.log("Something went wrong at ad.findUser function");
-          return;
-        } else {
-          mail = user.mail;
-          displayName = user.displayName;
-        }
-      });
+  const authenticatedUser = users[index];
 
-      const isUserMember = function (username, group) {
-        return new Promise((resolve, reject) => {
-          ad.isUserMemberOf(username, group, function (err, isMember) {
-            if (err) {
-              reject("Error");
-            }
-            resolve(isMember);
-          });
-        });
-      };
+  const accessToken = jwt.sign(
+    authenticatedUser,
+    process.env.ACCESS_TOKEN_SECRET
+  );
 
-      const getMemberGroup = async function (username, groups) {
-        for (const group of groups) {
-          try {
-            if (await isUserMember(username, group)) {
-              return group;
-            }
-          } catch (err) {
-            return null;
-          }
-        }
-        return null;
-      };
-
-      const groupOfUser = await getMemberGroup(username, groupsToCheck);
-
-      if (groupOfUser == null) {
-        res.status(403)
-          .send(`Username and password correct, but the user: "${username}" is not authenticated to use this service.
-        Please contact the administrator.`);
-      } else {
-        const authenticatedUser = {
-          username: username,
-          groupname: groupOfUser,
-          mail: mail,
-          displayName: displayName,
-        };
-
-        const accessToken = jwt.sign(
-          authenticatedUser,
-          process.env.ACCESS_TOKEN_SECRET
-        );
-
-        switch (groupOfUser) {
-          case "Webshop-Users":
-            res.json({ accessToken: accessToken });
-            return;
-          case "Admin":
-            res.json({ accessToken: accessToken });
-            return;
-        }
-
-        res.status(400).send("Group not found");
-      }
-    }
-  });
+  res.json({ accessToken: accessToken });
 });
 
 module.exports = router;
