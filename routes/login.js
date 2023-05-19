@@ -7,13 +7,13 @@ const jwt = require("jsonwebtoken");
 const users = [
   {
     username: "admin",
-    groupName: "Admin",
+    groupname: "Admin",
     mail: "admin@webshop",
     displayName: "Admin",
   },
   {
     username: "user",
-    groupName: "Webshop-Users",
+    groupname: "Webshop-Users",
     mail: "user@webshop",
     displayName: "User",
   },
